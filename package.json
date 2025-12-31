@@ -1,0 +1,36 @@
+{
+  "name": "react-soundclip",
+  "version": "1.0.0",
+  "description": "Libary for easy integration of audio sounds into a  react app",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "prepack": "npm run build",
+    "publish": "npm publish --access public"
+  },
+  "keywords": [
+    "react",
+    "audio"
+  ],
+  "author": "Anže Matelič",
+  "license": "MIT",
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/node": "^24.8.1",
+    "@types/react": "^19.2.7",
+    "jsdom": "^27.4.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.2",
+    "react": "^19.2.3"
+  }
+}
