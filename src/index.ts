@@ -1,2 +1,2 @@
-export { AudioPresent } from "./AudioPresent.tsx";
-export { useAudioContext } from "./useAudioContext.tsx";
+export * from "./AudioPresent";
+export * from "./useAudioContext";

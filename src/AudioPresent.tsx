@@ -1,111 +1,117 @@
-import React, {
+import {
   useEffect,
   useRef,
   type PropsWithChildren,
   type ReactElement,
 } from "react";
 import { useAudioContext } from "./useAudioContext";
-import { isValid, traverseToLastChild } from "./utils/utils";
-import { AudioChildProps, AudioPreset } from "./types";
+import { isValid, normalizeValue, traverseToLastChild } from "./utils/utils";
+import { AudioPreset } from "./types";
+import * as React from "react";
+import { Howl } from "howler";
 
 export const AudioPresent = ({
   children,
   src,
 }: PropsWithChildren<AudioPreset>) => {
-  const { getAudio, setAudio, removeAudio } = useAudioContext();
+  const containerRef = useRef(null);
+
+  const { getConfig, setAudio, removeAudio } = useAudioContext();
   const prevChildrenRef = useRef<React.ReactNode[]>([]);
 
-  function mountAudio(element: React.ReactElement<AudioChildProps>) {
-    if (isValid(element)) {
+  function mountAudio(element: HTMLHtmlElement) {
+    const dataset = element.dataset;
+    setAudio(dataset.key, {
+      hasPlayed: false,
+      src: dataset.src,
+      initial: normalizeValue(dataset.initial),
+      exits: normalizeValue(dataset.exit),
+      volume: (dataset.volume || 1) as number,
+    });
+  }
+
+  function unmountAudio(element: HTMLHtmlElement) {
+    const dataset = element.dataset;
+    const audio = getConfig(dataset.key);
+    if (!audio) {
       return;
     }
-    // Create audio element
-    const audio = new Audio(
-      typeof element.props["data-initial"] === "string"
-        ? element.props["data-initial"]
-        : src,
-    );
-    if (element.props["data-volume"]) {
-      audio.volume = element.props["data-volume"];
-    }
-    setAudio(element.key as string, audio);
-    // // Play audio after a short delay
-    if (element.props["data-initial"]) {
-      audio.play().catch((error) => {
-        console.error("Error playing audio:", error);
+    if (audio.exits) {
+      const player = new Howl({
+        src: audio.exits,
+        onend: function () {
+          removeAudio(dataset.key);
+        },
       });
+      player.play();
     }
   }
 
-  function unmountAudio(element: React.ReactElement<AudioChildProps>) {
-    if (isValid(element) || !element.key) {
-      return;
-    }
+  // useEffect(() => {
+  //   const currentChildrens = React.Children.toArray(children);
+  //   (currentChildrens || []).forEach((currentChildren) => {
+  //     if (!prevChildrenRef.current?.includes(currentChildren)) {
+  //       const elements = traverseToLastChild(currentChildren as any);
 
-    if (element.props["data-exit"]) {
-      const audio = getAudio(element.key);
+  //       elements.forEach((el) => {
+  //         if (el) {
+  //           mountAudio(el);
+  //         }
+  //       });
+  //     }
+  //   });
 
-      if (!audio) {
-        console.log("Audio not found for key:", element.key);
-        return;
-      }
-      audio.src =
-        typeof element.props["data-exit"] === "string"
-          ? element.props["data-exit"]
-          : src;
-      audio
-        .play()
-        .catch((error: Error) => {
-          console.error("Error playing audio:", error);
-        })
-        .finally(() => {
-          removeAudio(element.key as string);
-        });
-    }
-  }
+  //   let previousNodes = prevChildrenRef.current || [];
+  //   // remove items
+  //   previousNodes.forEach((currentChildren, index) => {
+  //     if (previousNodes.includes(currentChildrens)) {
+  //       return;
+  //     }
+  //     const elements = traverseToLastChild(currentChildren);
+
+  //     elements.forEach((el) => {
+  //       if (el) {
+  //         unmountAudio(el);
+  //       }
+  //     });
+  //   });
+
+  //   // Update the ref with current children
+  //   prevChildrenRef.current = currentChildrens;
+  // }, [children]);
 
   useEffect(() => {
-    const currentChildrens = React.Children.toArray(children);
-    (currentChildrens || []).forEach((currentChildren) => {
-      if (!prevChildrenRef.current?.includes(currentChildren)) {
-        const elements = traverseToLastChild(currentChildren as any);
-
-        elements.forEach((el) => {
-          if (el) {
-            mountAudio(el);
-          }
-        });
-      }
-    });
-
-    let previousNodes = prevChildrenRef.current || [];
-    // remove items
-    previousNodes.forEach((currentChildren, index) => {
-      if (previousNodes.includes(currentChildrens)) {
+    if (!containerRef.current) return;
+    React.Children.map(children, (child, index) => {
+      if (!React.isValidElement(child)) {
         return;
       }
-      const elements = traverseToLastChild(currentChildren);
-
-      elements.forEach((el) => {
-        if (el) {
-          unmountAudio(el);
-        }
+      setAudio(child.props["data-key"], {
+        hasPlayed: false,
+        src: child.props["data-src"],
+        initial: normalizeValue(child.props["data-initial"]),
+        exits: normalizeValue(child.props["data-exit"]),
+        volume: (child.props["data-volume"] || 1) as number,
       });
     });
 
-    // Update the ref with current children
-    prevChildrenRef.current = currentChildrens;
-  }, [children]);
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((el) => mountAudio(el as HTMLHtmlElement));
+        mutation.removedNodes.forEach((el) =>
+          unmountAudio(el as HTMLHtmlElement),
+        );
+      });
+    });
 
-  return (
-    <div>
-      {React.Children.map(children, (child, index) => {
-        if (!React.isValidElement(child)) {
-          return child;
-        }
-        // childElementRef.current[index] = child;
-        return React.cloneElement(child, { ref: null } as any);
-      })}
-    </div>
-  );
+    observer.observe(containerRef.current, {
+      attributes: true,
+      childList: true, // Observe direct children
+      subtree: true, // Observe all descendants
+    });
+
+    return () => observer.disconnect(); // Cleanup
+  }, []);
+
+  return <div ref={containerRef}>{children}</div>;
 };

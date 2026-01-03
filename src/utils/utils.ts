@@ -1,4 +1,4 @@
-import React, { ReactElement } from "react";
+import * as React from "react";
 import { AudioChildProps } from "../types";
 
 export function traverseToLastChild(element: React.ReactNode) {
@@ -40,4 +40,13 @@ export function isValid(element: React.ReactElement<AudioChildProps>) {
 export function cleanKey(key: string) {
   if (!key) return key;
   return key.replace(/^[\$.]+/, "");
+}
+
+export function normalizeValue(
+  value: string | boolean | undefined,
+): boolean | string {
+  if (value === undefined) {
+    return false;
+  }
+  return value;
 }

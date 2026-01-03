@@ -2,15 +2,11 @@
 // add suport for muting all
 // find a way how to add audio to only selected items
 export interface AudioContextProps {
-  defaults: {
-    volume: number;
-    autoPlay: boolean;
-  };
+  volume: number;
+  autoPlay: boolean;
 }
 
 export type AudioPreset = {
-  play: boolean;
-  loop: boolean;
   src: string;
 };
 
@@ -19,4 +15,5 @@ export interface AudioChildProps {
   "data-initial"?: string | boolean;
   "data-exit"?: string | boolean;
   "data-volume"?: number;
+  "data-src": string;
 }
