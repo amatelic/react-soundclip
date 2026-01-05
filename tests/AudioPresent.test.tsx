@@ -29,14 +29,12 @@ describe("Test for audio present", () => {
 
   it("it render", () => {
     render(
-      <AudioPresent loop={false} play={true} src="./sounds/ding.mp3">
+      <AudioPresent src="./sounds/ding.mp3">
         <button data-initial="./sounds/ding.mp3" data-exit="./sounds/jump.mp3">
           Play
         </button>
       </AudioPresent>,
     );
     expect(screen.getByText("Play")).toBeTruthy();
-    // expect(Audio.mock.instances[0].play).toBeTruthy();
-    // expect(Audio().play).toBeCalled();
   });
 });

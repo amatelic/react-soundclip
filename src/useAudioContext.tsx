@@ -4,6 +4,7 @@ import {
   useState,
   useRef,
   type PropsWithChildren,
+  useCallback,
 } from "react";
 import { AudioContextProps } from "./types";
 import { cleanKey } from "./utils/utils";
@@ -15,17 +16,18 @@ interface AudioChildrenContext {
   exits: string | boolean | undefined;
   src: string;
   volume: number;
+  isMute: boolean;
 }
 
 // Define the shape of the context value
 interface AudioContextValue {
-  volume: number;
-  setVolume: (value: number) => void;
+  toggleMute: () => void;
   getAudio: (key: string) => HTMLAudioElement | undefined;
   getConfig: (key: string) => AudioChildrenContext | undefined;
   removeAudio: (key: string) => void;
   setAudio: (key: string, audio: AudioChildrenContext) => void;
   listAudioKeys(): string[];
+  isMute: boolean;
 }
 
 // Create context with a default value that will never be used (since you throw if undefined)
@@ -35,12 +37,8 @@ export const AudioProvider = ({
   children,
   defaults = { volume: 1, autoPlay: false },
 }: PropsWithChildren<{ defaults?: AudioContextProps }>) => {
-  const [volume, setVolume] = useState(defaults.volume);
   const audioRef = useRef<Record<string, AudioChildrenContext>>({});
-
-  const handleVolumeChange = (newVolume: number) => {
-    setVolume(newVolume);
-  };
+  const [isMute, setIsMute] = useState(false);
 
   const getAudio = (key: string): ReturnType<Howl> | undefined => {
     const config = audioRef.current[cleanKey(key)];
@@ -73,27 +71,33 @@ export const AudioProvider = ({
     return audioRef.current[cleanKey(key)];
   };
 
-  const setAudio = (
-    key: string,
-    audioConfig: Parameters<AudioContextValue["setAudio"]>[1],
-  ) => {
-    if (audioRef.current[cleanKey(key)]) {
-      return;
-    }
-    audioRef.current[cleanKey(key)] = audioConfig;
-    // in case there is an init play the audio
-    if (audioConfig.initial && !audioConfig.hasPlayed) {
-      const sound = new Howl({
-        src: audioConfig.initial,
-        volume: audioConfig.volume,
-        onend: function () {
-          console.log("Finished!");
-          audioConfig.hasPlayed = true;
-        },
-      });
-      sound.play();
-    }
-  };
+  const setAudio = useCallback(
+    (
+      key: string,
+      audioConfig: Parameters<AudioContextValue["setAudio"]>[1],
+    ) => {
+      if (audioRef.current[cleanKey(key)]) {
+        return;
+      }
+      audioRef.current[cleanKey(key)] = audioConfig;
+      // in case there is an init play the audio
+      if (audioConfig.initial && !audioConfig.hasPlayed) {
+        const sound = new Howl({
+          src: audioConfig.initial,
+          volume: audioConfig.volume,
+          onend: function () {
+            console.log("Finished!");
+            audioConfig.hasPlayed = true;
+          },
+        });
+
+        if (!isMute) {
+          sound.play();
+        }
+      }
+    },
+    [isMute],
+  );
 
   const removeAudio = (key: string) => {
     delete audioRef.current[cleanKey(key)];
@@ -103,16 +107,28 @@ export const AudioProvider = ({
     return Object.keys(audioRef.current);
   };
 
+  const toggleMute = useCallback(() => {
+    setIsMute((m) => {
+      listAudioKeys().forEach((key) => {
+        const audio = audioRef.current[cleanKey(key)];
+        if (audio) {
+          audio.isMute = !m;
+        }
+      });
+      return !m;
+    });
+  }, [isMute, setIsMute]);
+
   return (
     <AudioContext.Provider
       value={{
-        volume,
-        setVolume: handleVolumeChange,
-        getAudio,
         setAudio,
+        getAudio,
         removeAudio,
         listAudioKeys,
         getConfig,
+        toggleMute,
+        isMute,
       }}
     >
       {children}
